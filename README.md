@@ -21,5 +21,7 @@ samples) can be controlled. The target model can be controlled.
 
 
 ## Implementation ##
-The initial version modles uncorrelated variance as zero. The target
-model is DES final round XOR operation.
+The initial version target model is the DES final round XOR
+operation. This means that we generate a ciphertext for each trace, and
+given a fixed round key for all traces, we decide if there should be a
+leakage or not.
