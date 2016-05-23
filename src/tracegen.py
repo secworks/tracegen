@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 #=======================================================================
 #
@@ -45,6 +45,9 @@ import sys
 import os
 import argparse
 import datetime
+import matplotlib.pyplot as plt
+import numpy
+import ujson
 
 
 #-------------------------------------------------------------------
@@ -60,7 +63,8 @@ import datetime
 def main():
     VERSION = '0.1 alpha'
 
-    parser = argparse.ArgumentParser(description = 'Generated traces with side-channel leakage\
+    parser = argparse.ArgumentParser(version = VERSION,
+                                     description = 'Generated traces with side-channel leakage\
                                       for testing side-channel analysis tools.')
     parser.add_argument('--verbose', action="store_true", default=False)
     parser.add_argument('-n' '--traces', action="store", dest="num_traces",
