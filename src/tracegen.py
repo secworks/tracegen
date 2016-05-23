@@ -44,12 +44,7 @@
 import sys
 import os
 import argparse
-import cPickle as pickle
 import datetime
-
-import matplotlib.pyplot as plt
-import numpy
-import ujson
 
 
 #-------------------------------------------------------------------
@@ -65,8 +60,7 @@ import ujson
 def main():
     VERSION = '0.1 alpha'
 
-    parser = argparse.ArgumentParser(version = VERSION,
-                                     description = 'Generated traces with side-channel leakage\
+    parser = argparse.ArgumentParser(description = 'Generated traces with side-channel leakage\
                                       for testing side-channel analysis tools.')
     parser.add_argument('--verbose', action="store_true", default=False)
     parser.add_argument('-n' '--traces', action="store", dest="num_traces",
