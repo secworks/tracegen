@@ -229,11 +229,12 @@ def final_des_round(rbit, rkey, verbose = False):
     r16 = [(a ^ b) for a, b in zip(l15, f_res)]
     l16 = r15[:]
 
-    # We flip the order according to spec to create preoutput.
+    # We flip the order according to spec to create preoutput and gen ciphertext.
     preoutput = r16 + l16
     ciphertext = [preoutput[ip[i]] for i in xrange(64)]
 
     # Determine if the final round caused a leakage or not.
+    # That is we have a zero being changed to a one.
     leakage = ((l15[rbit] == 0) and (r16[rbit] == 1))
 
     return (leakage, ciphertext)
