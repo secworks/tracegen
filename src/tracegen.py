@@ -93,6 +93,18 @@ LEAKAGE_BIT = 0
 ROUND_KEY = 42
 
 
+#-------------------------------------------------------------------
+# flatten()
+#
+# Flatten (merge) a list of list into a single list. Python does
+# not have a good operator for this.
+#-------------------------------------------------------------------
+def flatten(bitlist):
+    res = []
+    for i in bitlist:
+        res += i
+    return res
+
 
 #-------------------------------------------------------------------
 # bl2i()
@@ -173,13 +185,13 @@ def des_s(sbox, blist):
 # final_des_round()
 #
 # This function will generate a 64 bit random fake result from the
-# next to final round and then given the ROUND_KEY value perform
+# next to final round and then given the rkey value perform
 # final round operation including final permutation. The function
 # returns the generated ciphertext and if the LEAKAGE_BIT
 # in the specific calculation would cause a change 0->1 and
 # therefore a leakage.
 #-------------------------------------------------------------------
-def final_des_round(rbit, rk, verbose = False):
+def final_des_round(rbit, rkey, verbose = False):
     e = [31,  0,  1,  2,  3,  4,  3,  4,  5,  6,  7,  8,
           7,  8,  9, 10, 11, 12, 11, 12, 13, 14, 15, 16,
          15, 16, 17, 18, 19, 20, 19, 20, 21, 22, 23, 24,
@@ -194,17 +206,33 @@ def final_des_round(rbit, rk, verbose = False):
           56, 48, 40, 32, 24, 16,  8,  0, 58, 50, 42, 34, 26, 18, 10,  2,
           60, 52, 44, 36, 28, 20, 12,  4, 62, 54, 46, 38, 30, 22, 14,  6]
 
-    inv_ciphertext = [ciphertext[ip[i]] for i in xrange(64)]
+    # Generate a random round result for round 15.
+    l15 = [random.randint(0, 1) for i in range(32)]
+    r15 = [random.randint(0, 1) for i in range(32)]
 
-    exp_r = [int(inv_ciphertext[e[i]]) for i in xrange(48)]
-    exp_rk = [1 if b=='1' else 0 for b in '{0:06b}'.format(rk)] * 8
-    rxrk = [(a ^ b) for a, b in zip(exp_r, exp_rk)]
-    s_split = [rxrk[(i * 6) : ((i + 1) * 6)] for i in xrange(8)]
+    # Expand r15, expand rkey and calculate f using s-boxes and p.
+    exp_r = [int(r15[e[i]]) for i in xrange(48)]
+    exp_rkey = [1 if b=='1' else 0 for b in '{0:06b}'.format(rkey)] * 8
+    rxrkey = [(a ^ b) for a, b in zip(exp_r, exp_rkey)]
+    s_split = [rxrkey[(i * 6) : ((i + 1) * 6)] for i in xrange(8)]
     s_res = [des_s(i, s_split[i]) for i in xrange(8)]
     s_bits = flatten([[1 if b=='1' else 0 for b in '{0:04b}'.format(i)] for i in s_res])
-    p_res = [s_bits[p[i]] for i in xrange(32)]
+    f_res = [s_bits[p[i]] for i in xrange(32)]
 
-    return (True, [0] * 64)
+    # Perform xor-operation using calculated f_res on left part of round 15 result.
+    # Note that we also do final flip of L<->R using name notation.
+    # Also create l16 which is a copy of r15
+    r16 = [(a ^ b) for a, b in zip(l15, f_res)]
+    l16 = r15[:]
+
+    # We flip the order according to spec to create preoutput.
+    preoutput = r16 + l16
+    ciphertext = [preoutput[ip[i]] for i in xrange(64)]
+
+    # Determine if the final round caused a leakage or not.
+    leakage = ((l15[rbit] == 0) and (r16[rbit] == 1))
+
+    return (leakage, ciphertext)
 
 
 #-------------------------------------------------------------------
