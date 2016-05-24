@@ -70,6 +70,10 @@ DIFF_POS = 0.8
 RAND_DIFF_POS = True
 RAND_DIFF_WIDTH = 3
 
+# If DISPLAY_EXAMPLE, then the first trace generated is displayed
+# as an example.
+DISPLAY_EXAMPLE = True
+
 # If DISPLAY_AVERAGE, then the average trace of all generates
 # traces will be calculated and plotted.
 DISPLAY_AVERAGE = True
@@ -82,7 +86,7 @@ LEAKAGE_AMOUNT = 0.01
 
 # If ALWAYS_LEAK_OP then the leakage decision function will always
 # return True and the leakage will always be added.
-ALWAYS_LEAK_OP = True
+ALWAYS_LEAK_OP = False
 
 # LEAKAGE_BIT is the bit in the round function we look at for
 # doing leakage decision.
@@ -242,8 +246,8 @@ def final_des_round(rbit, rkey, verbose = False):
 #-------------------------------------------------------------------
 def decide_leakage_effect():
     if ALWAYS_LEAK_OP:
-        return True
-    return final_des_round()
+        return (True, [0] * 64)
+    return final_des_round(LEAKAGE_BIT, ROUND_KEY)
 
 
 #-------------------------------------------------------------------
@@ -286,15 +290,15 @@ def display_trace(trace):
 # Display the average trace calculated over all traces.
 #-------------------------------------------------------------------
 def display_average_trace(traces):
-    # Display the first trace as an example.
-    display_trace(traces[0])
+    (trace, leakage, ciphertext) = traces[0]
 
-    num_samples = len(traces[0])
+    num_samples = len(trace)
     average_trace = [0.0] * num_samples
 
     for t in xrange(len(traces)):
+        (trace, leakage, ciphertext) = traces[t]
         for i in xrange(num_samples):
-            average_trace[i] += traces[t][i]
+            average_trace[i] += trace[i]
     for i in xrange(num_samples):
         average_trace[i] = average_trace[i] / num_samples
 
@@ -315,6 +319,7 @@ def gen_traces(destdir, basenane, num_traces, num_samples, verbose=False):
     # Generate or get basename.
 
     # Loop over all traces
+    num_leaks = 0
     traces = []
     for t in xrange(num_traces):
         if t % 1000 == 0:
@@ -324,13 +329,22 @@ def gen_traces(destdir, basenane, num_traces, num_samples, verbose=False):
             print("Sample where diff will be inserted: %d" % (diff_sample))
         samples = get_base_samples(num_samples)
 
-        if decide_leakage_effect():
+        (leakage, ciphertext) = decide_leakage_effect()
+
+        if leakage:
             samples[diff_sample] += LEAKAGE_AMOUNT
-        traces.append(samples)
+            num_leaks += 1
+        traces.append((samples, leakage, ciphertext))
+
+    print("Number of traces with leakage: %08d" % num_leaks)
 
     if verbose:
         print("Generated traces:")
         print(traces)
+
+    if DISPLAY_EXAMPLE:
+        (trace, leakage, ciphertext) = traces[0]
+        display_trace(trace)
 
     if DISPLAY_AVERAGE:
         display_average_trace(traces)
