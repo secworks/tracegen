@@ -290,13 +290,13 @@ def display_trace(trace):
 # Display the average trace calculated over all traces.
 #-------------------------------------------------------------------
 def display_average_trace(traces):
-    (trace, leakage, ciphertext) = traces[0]
+    (trace, ciphertext) = traces[0]
 
     num_samples = len(trace)
     average_trace = [0.0] * num_samples
 
     for t in xrange(len(traces)):
-        (trace, leakage, ciphertext) = traces[t]
+        (trace, ciphertext) = traces[t]
         for i in xrange(num_samples):
             average_trace[i] += trace[i]
     for i in xrange(num_samples):
@@ -327,14 +327,14 @@ def gen_traces(destdir, basenane, num_traces, num_samples, verbose=False):
         diff_sample = get_index(num_samples)
         if verbose:
             print("Sample where diff will be inserted: %d" % (diff_sample))
-        samples = get_base_samples(num_samples)
+        trace = get_base_samples(num_samples)
 
         (leakage, ciphertext) = decide_leakage_effect()
 
         if leakage:
-            samples[diff_sample] += LEAKAGE_AMOUNT
+            trace[diff_sample] += LEAKAGE_AMOUNT
             num_leaks += 1
-        traces.append((samples, leakage, ciphertext))
+        traces.append((trace, ciphertext))
 
     print("Number of traces with leakage: %08d" % num_leaks)
 
@@ -343,7 +343,7 @@ def gen_traces(destdir, basenane, num_traces, num_samples, verbose=False):
         print(traces)
 
     if DISPLAY_EXAMPLE:
-        (trace, leakage, ciphertext) = traces[0]
+        (trace, ciphertext) = traces[0]
         display_trace(trace)
 
     if DISPLAY_AVERAGE:
