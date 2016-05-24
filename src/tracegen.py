@@ -56,6 +56,9 @@ import ujson
 
 #-------------------------------------------------------------------
 # Defines.
+#
+# A lot of these could (should) be turned into flags w defaults.
+# They control a lot of the behaviour.
 #-------------------------------------------------------------------
 # DIFF_POS is the position within the trace (from 0 to 100%)
 # where the generated diff will be inserted.
@@ -67,10 +70,19 @@ DIFF_POS = 0.8
 RAND_DIFF_POS = True
 RAND_DIFF_WIDTH = 3
 
-
 # If DISPLAY_AVERAGE, then the average trace of all generates
 # traces will be calculated and plotted.
 DISPLAY_AVERAGE = True
+
+# NOISE_PEAK is the peak +/- value for the baseline.
+NOISE_PEAK = 0.05
+
+# LEAKAGE_AMOUNT is the amount of increased value the leakage adds.
+LEAKAGE_AMOUNT = 0.01
+
+# If ALWAYS_LEAK_OP then the leakage decision function will always
+# return True and the leakage will always be added.
+ALWAYS_LEAK_OP = True
 
 
 #-------------------------------------------------------------------
@@ -79,7 +91,9 @@ DISPLAY_AVERAGE = True
 # Decide if we should a small difference to simulate leakage.
 #-------------------------------------------------------------------
 def decide_leakage_effect():
-    return True
+    if ALWAYS_LEAK_OP:
+        return True
+
 
 
 #-------------------------------------------------------------------
@@ -99,7 +113,21 @@ def get_index(num_samples):
 # simulates the average base noise level.
 #-------------------------------------------------------------------
 def get_base_samples(num_samples):
-    return [0.0] * num_samples
+    trace = []
+    for i in xrange(num_samples):
+        trace.append(random.uniform(-NOISE_PEAK, NOISE_PEAK))
+    return trace
+
+
+#-------------------------------------------------------------------
+# display_trace()
+#
+# Display the given trace.
+#-------------------------------------------------------------------
+def display_trace(trace):
+    x_index = [i for i in xrange(len(trace))]
+    plt.plot(x_index, trace)
+    plt.show()
 
 
 #-------------------------------------------------------------------
@@ -108,8 +136,10 @@ def get_base_samples(num_samples):
 # Display the average trace calculated over all traces.
 #-------------------------------------------------------------------
 def display_average_trace(traces):
-    num_samples = len(traces[0])
+    # Display the first trace as an example.
+    display_trace(traces[0])
 
+    num_samples = len(traces[0])
     average_trace = [0.0] * num_samples
 
     for t in xrange(len(traces)):
@@ -118,9 +148,7 @@ def display_average_trace(traces):
     for i in xrange(num_samples):
         average_trace[i] = average_trace[i] / num_samples
 
-    x_index = [i for i in xrange(num_samples)]
-    plt.plot(x_index, average_trace)
-    plt.show()
+    display_trace(average_trace)
 
 
 #-------------------------------------------------------------------
@@ -139,13 +167,15 @@ def gen_traces(destdir, basenane, num_traces, num_samples, verbose=False):
     # Loop over all traces
     traces = []
     for t in xrange(num_traces):
+        if t % 1000 == 0:
+            print("trace: %08d" % t)
         diff_sample = get_index(num_samples)
         if verbose:
             print("Sample where diff will be inserted: %d" % (diff_sample))
         samples = get_base_samples(num_samples)
 
         if decide_leakage_effect():
-            samples[diff_sample] += 0.01
+            samples[diff_sample] += LEAKAGE_AMOUNT
         traces.append(samples)
 
     if verbose:
