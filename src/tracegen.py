@@ -78,12 +78,6 @@ DISPLAY_EXAMPLE = True
 # traces will be calculated and plotted.
 DISPLAY_AVERAGE = True
 
-# NOISE_PEAK is the peak +/- value for the baseline.
-NOISE_PEAK = 0.05
-
-# LEAKAGE_AMOUNT is the amount of increased value the leakage adds.
-LEAKAGE_AMOUNT = 0.01
-
 # If ALWAYS_LEAK_OP then the leakage decision function will always
 # return True and the leakage will always be added.
 ALWAYS_LEAK_OP = False
@@ -267,11 +261,11 @@ def get_index(num_samples):
 # Generate a trace wit num_samples. The values in the samples
 # simulates the average base noise level.
 #-------------------------------------------------------------------
-def get_base_samples(num_samples):
-    trace = []
+def get_base_samples(num_samples, noise_level):
+    baseline_trace = []
     for i in xrange(num_samples):
-        trace.append(random.uniform(-NOISE_PEAK, NOISE_PEAK))
-    return trace
+        baseline_trace.append(random.uniform(-noise_level, noise_level))
+    return baseline_trace
 
 
 #-------------------------------------------------------------------
@@ -314,7 +308,8 @@ def display_average_trace(traces):
 # a DB crated that links the trace files to the generated
 # ciphertexts.
 #-------------------------------------------------------------------
-def gen_traces(destdir, basenane, num_traces, num_samples, verbose=False):
+def gen_traces(destdir, basenane, num_traces, num_samples,
+                   noise_level, leakage_level, verbose=False):
     # Try to open the dest dir.
 
     # Generate or get basename.
@@ -328,12 +323,12 @@ def gen_traces(destdir, basenane, num_traces, num_samples, verbose=False):
         diff_sample = get_index(num_samples)
         if verbose:
             print("Sample where diff will be inserted: %d" % (diff_sample))
-        trace = get_base_samples(num_samples)
+        trace = get_base_samples(num_samples, noise_level)
 
         (leakage, ciphertext) = decide_leakage_effect()
 
         if leakage:
-            trace[diff_sample] += LEAKAGE_AMOUNT
+            trace[diff_sample] += leakage_level
             num_leaks += 1
         traces.append((trace, ciphertext))
 
@@ -375,6 +370,14 @@ def main():
     parser.add_argument('-s' '--samples', action="store", dest="num_samples",
                             type=int, help="Number of samples in a trace. Default 1000", default=1000)
 
+    parser.add_argument('-r' '--random-noise', action="store", dest="noise_level",
+                            type=float, help="The peak +/- random noise level in traces. Default 0.05",
+                            default=0.05)
+
+    parser.add_argument('-l' '--leakage-level', action="store", dest="leakage_level",
+                            type=float, help="The positive leakage level in traces. Default 0.01",
+                            default=0.01)
+
     parser.add_argument('-p', '--plot', action="store_true", dest='do_plot', default=False,
                             help="Plot the resulting average trace.")
 
@@ -382,7 +385,8 @@ def main():
 
     args = parser.parse_args()
 
-    gen_traces(args.destdir, args.basename, args.num_traces, args.num_samples, args.verbose)
+    gen_traces(args.destdir, args.basename, args.num_traces, args.num_samples,
+                   args.noise_level, args.leakage_level, args.verbose)
 
 
 #-------------------------------------------------------------------
