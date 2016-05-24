@@ -50,7 +50,7 @@ import argparse
 import datetime
 import random
 import matplotlib.pyplot as plt
-import numpy
+import cPickle as pickle
 import ujson
 
 
@@ -301,6 +301,31 @@ def display_average_trace(traces):
 
 
 #-------------------------------------------------------------------
+# dump_traces()
+#-------------------------------------------------------------------
+def dump_traces(dest_dir, base_name, traces, verbose=False):
+    if dest_dir[-1] != "/":
+        dest_dir += "/"
+
+    dst_file_ctr = 0
+    cipher_db = []
+    for (trace, ciphertext) in traces:
+        dst_file_name = dest_dir + base_name + "_" + str(dst_file_ctr).zfill(8) + ".dpa"
+        if verbose:
+            print("Writing converted data to file: %s" % dst_file_name)
+
+        with open(dst_file_name, 'wb') as curr_dst_file:
+            ujson.dump(trace, curr_dst_file)
+        dst_file_ctr += 1
+        cipher_db.append((dst_file_name, ciphertext))
+
+    # Save the DB with ciphertexts and file names.
+    dst_cipher_file_name = dest_dir + base_name + "_ciphertexts.dpb"
+    with open(dst_cipher_file_name, 'wb') as curr_dst_file:
+        pickle.dump(cipher_db, curr_dst_file, pickle.HIGHEST_PROTOCOL)
+
+
+#-------------------------------------------------------------------
 # gen_traces()
 #
 # Generate num_traces number of traces, each with num_samples.
@@ -308,13 +333,9 @@ def display_average_trace(traces):
 # a DB crated that links the trace files to the generated
 # ciphertexts.
 #-------------------------------------------------------------------
-def gen_traces(destdir, basenane, num_traces, num_samples,
+def gen_traces(destdir, basename, num_traces, num_samples,
                    noise_level, leakage_level, verbose=False):
-    # Try to open the dest dir.
 
-    # Generate or get basename.
-
-    # Loop over all traces
     num_leaks = 0
     traces = []
     for t in xrange(num_traces):
@@ -344,6 +365,8 @@ def gen_traces(destdir, basenane, num_traces, num_samples,
 
     if DISPLAY_AVERAGE:
         display_average_trace(traces)
+
+    dump_traces(destdir, basename, traces, verbose)
 
 
 #-------------------------------------------------------------------
@@ -385,7 +408,12 @@ def main():
 
     args = parser.parse_args()
 
-    gen_traces(args.destdir, args.basename, args.num_traces, args.num_samples,
+    if args.basename == "currdate":
+        basename = "cab_dpa_data_" + datetime.datetime.now().isoformat()[:10]
+    else:
+        basename = args.basename
+
+    gen_traces(args.destdir, basename, args.num_traces, args.num_samples,
                    args.noise_level, args.leakage_level, args.verbose)
 
 
