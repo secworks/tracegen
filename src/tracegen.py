@@ -308,7 +308,7 @@ def dump_traces(dest_dir, base_name, traces, verbose=False):
         dest_dir += "/"
 
     dst_file_ctr = 0
-    cipher_db = []
+    cipher_db = {}
     for (trace, ciphertext) in traces:
         dst_file_name = dest_dir + base_name + "_" + str(dst_file_ctr).zfill(8) + ".dpa"
         if verbose:
@@ -317,7 +317,7 @@ def dump_traces(dest_dir, base_name, traces, verbose=False):
         with open(dst_file_name, 'wb') as curr_dst_file:
             ujson.dump(trace, curr_dst_file)
         dst_file_ctr += 1
-        cipher_db.append((dst_file_name, ciphertext))
+        cipher_db[dst_file_name] = ciphertext
 
     # Save the DB with ciphertexts and file names.
     dst_cipher_file_name = dest_dir + base_name + "_ciphertexts.dpb"
@@ -416,14 +416,18 @@ def main():
 
     args = parser.parse_args()
 
+    if not (os.path.isdir(args.destdir)):
+        print("Error: Destination directory '%s' does not exist." % args.destdir)
+        return 1
+
+    if args.rkey > 63:
+        print("round key is too big, should be less than 64, is %d" % args.rkey)
+        return 1
+
     if args.basename == "currdate":
         basename = "cab_dpa_data_" + datetime.datetime.now().isoformat()[:10]
     else:
         basename = args.basename
-
-    if args.rkey > 63:
-        print("round key is too big, should be less than 64, is %d" % args.rkey)
-        sys.exit(1)
 
     gen_traces(args.destdir, basename, args.num_traces, args.num_samples, args.noise_level,
                    args.rkey, args.leakage_level, args.always_leak, args.verbose)
