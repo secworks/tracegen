@@ -92,6 +92,38 @@ ROUND_KEY = 42
 
 
 #-------------------------------------------------------------------
+# display_trace()
+#
+# Display the given trace.
+#-------------------------------------------------------------------
+def display_trace(trace):
+    x_index = [i for i in xrange(len(trace))]
+    plt.plot(x_index, trace)
+    plt.show()
+
+
+#-------------------------------------------------------------------
+# display_average_trace()
+#
+# Display the average trace calculated over all traces.
+#-------------------------------------------------------------------
+def display_average_trace(traces):
+    (trace, ciphertext) = traces[0]
+
+    num_samples = len(trace)
+    average_trace = [0.0] * num_samples
+
+    for t in xrange(len(traces)):
+        (trace, ciphertext) = traces[t]
+        for i in xrange(num_samples):
+            average_trace[i] += trace[i]
+    for i in xrange(num_samples):
+        average_trace[i] = average_trace[i] / num_samples
+
+    display_trace(average_trace)
+
+
+#-------------------------------------------------------------------
 # flatten()
 #
 # Flatten (merge) a list of list into a single list. Python does
@@ -123,6 +155,29 @@ def bl2i(bitlist):
 #-------------------------------------------------------------------
 def i2b(width, i):
     return [1 if b=='1' else 0 for b in '{0:0(width)b}'.format(i)]
+
+
+#-------------------------------------------------------------------
+# get_index
+#
+# Get the index in which sample a side channel effect should
+# be added. Currently triangle shape with fixed width."
+#-------------------------------------------------------------------
+def get_index(num_samples):
+    return int((num_samples * DIFF_POS) + random.triangular(-RAND_DIFF_WIDTH, RAND_DIFF_WIDTH))
+
+
+#-------------------------------------------------------------------
+# get_base_samples()
+#
+# Generate a trace wit num_samples. The values in the samples
+# simulates the average base noise level.
+#-------------------------------------------------------------------
+def get_base_samples(num_samples, noise_level):
+    baseline_trace = []
+    for i in xrange(num_samples):
+        baseline_trace.append(random.uniform(-noise_level, noise_level))
+    return baseline_trace
 
 
 #-------------------------------------------------------------------
@@ -239,65 +294,10 @@ def final_des_round(rbit, rkey, verbose = False):
 #
 # Decide if we should a small difference to simulate leakage.
 #-------------------------------------------------------------------
-def decide_leakage_effect():
-    if ALWAYS_LEAK_OP:
+def decide_leakage_effect(always_leak, rkey):
+    if always_leak:
         return (True, [0] * 64)
-    return final_des_round(LEAKAGE_BIT, ROUND_KEY)
-
-
-#-------------------------------------------------------------------
-# get_index
-#
-# Get the index in which sample a side channel effect should
-# be added. Currently triangle shape with fixed width."
-#-------------------------------------------------------------------
-def get_index(num_samples):
-    return int((num_samples * DIFF_POS) + random.triangular(-RAND_DIFF_WIDTH, RAND_DIFF_WIDTH))
-
-
-#-------------------------------------------------------------------
-# get_base_samples()
-#
-# Generate a trace wit num_samples. The values in the samples
-# simulates the average base noise level.
-#-------------------------------------------------------------------
-def get_base_samples(num_samples, noise_level):
-    baseline_trace = []
-    for i in xrange(num_samples):
-        baseline_trace.append(random.uniform(-noise_level, noise_level))
-    return baseline_trace
-
-
-#-------------------------------------------------------------------
-# display_trace()
-#
-# Display the given trace.
-#-------------------------------------------------------------------
-def display_trace(trace):
-    x_index = [i for i in xrange(len(trace))]
-    plt.plot(x_index, trace)
-    plt.show()
-
-
-#-------------------------------------------------------------------
-# display_average_trace()
-#
-# Display the average trace calculated over all traces.
-#-------------------------------------------------------------------
-def display_average_trace(traces):
-    (trace, ciphertext) = traces[0]
-
-    num_samples = len(trace)
-    average_trace = [0.0] * num_samples
-
-    for t in xrange(len(traces)):
-        (trace, ciphertext) = traces[t]
-        for i in xrange(num_samples):
-            average_trace[i] += trace[i]
-    for i in xrange(num_samples):
-        average_trace[i] = average_trace[i] / num_samples
-
-    display_trace(average_trace)
+    return final_des_round(LEAKAGE_BIT, rkey)
 
 
 #-------------------------------------------------------------------
@@ -333,8 +333,8 @@ def dump_traces(dest_dir, base_name, traces, verbose=False):
 # a DB crated that links the trace files to the generated
 # ciphertexts.
 #-------------------------------------------------------------------
-def gen_traces(destdir, basename, num_traces, num_samples,
-                   noise_level, leakage_level, verbose=False):
+def gen_traces(destdir, basename, num_traces, num_samples, noise_level,
+                   rkey, leakage_level, always_leak, verbose=False):
 
     num_leaks = 0
     traces = []
@@ -346,7 +346,7 @@ def gen_traces(destdir, basename, num_traces, num_samples,
             print("Sample where diff will be inserted: %d" % (diff_sample))
         trace = get_base_samples(num_samples, noise_level)
 
-        (leakage, ciphertext) = decide_leakage_effect()
+        (leakage, ciphertext) = decide_leakage_effect(always_leak, rkey)
 
         if leakage:
             trace[diff_sample] += leakage_level
@@ -383,26 +383,34 @@ def main():
 
     parser.add_argument("destdir", help = 'The destination file directory')
 
+    parser.add_argument('-a', '--always-leak', action="store_true", dest='always_leak', default=False,
+                            help="Always add leakage factor. This disables the leakage model and\
+                            is just for testing.")
+
     parser.add_argument('-b', "--basename", action="store", default="currdate",
                         help = 'The base file name for target files. If omitted\
                         a simple name will be automatically generated.')
 
-    parser.add_argument('-n' '--traces', action="store", dest="num_traces",
-                            type=int, help="Number of traces to geneate. Default 1000", default=1000)
-
-    parser.add_argument('-s' '--samples', action="store", dest="num_samples",
-                            type=int, help="Number of samples in a trace. Default 1000", default=1000)
-
-    parser.add_argument('-r' '--random-noise', action="store", dest="noise_level",
-                            type=float, help="The peak +/- random noise level in traces. Default 0.05",
-                            default=0.05)
+    parser.add_argument('-k' '--round-key', action="store", dest="rkey",
+                            type=int, help="The guessed round key value [0..63]. Default is 42",
+                            default=42)
 
     parser.add_argument('-l' '--leakage-level', action="store", dest="leakage_level",
                             type=float, help="The positive leakage level in traces. Default 0.01",
                             default=0.01)
 
+    parser.add_argument('-n' '--traces', action="store", dest="num_traces",
+                            type=int, help="Number of traces to geneate. Default 1000", default=1000)
+
     parser.add_argument('-p', '--plot', action="store_true", dest='do_plot', default=False,
                             help="Plot the resulting average trace.")
+
+    parser.add_argument('-r' '--random-noise', action="store", dest="noise_level",
+                            type=float, help="The peak +/- random noise level in traces. Default 0.05",
+                            default=0.05)
+
+    parser.add_argument('-s' '--samples', action="store", dest="num_samples",
+                            type=int, help="Number of samples in a trace. Default 1000", default=1000)
 
     parser.add_argument('--verbose', action="store_true", default=False)
 
@@ -413,8 +421,12 @@ def main():
     else:
         basename = args.basename
 
-    gen_traces(args.destdir, basename, args.num_traces, args.num_samples,
-                   args.noise_level, args.leakage_level, args.verbose)
+    if args.rkey > 63:
+        print("round key is too big, should be less than 64, is %d" % args.rkey)
+        sys.exit(1)
+
+    gen_traces(args.destdir, basename, args.num_traces, args.num_samples, args.noise_level,
+                   args.rkey, args.leakage_level, args.always_leak, args.verbose)
 
 
 #-------------------------------------------------------------------
