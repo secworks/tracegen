@@ -78,17 +78,9 @@ DISPLAY_EXAMPLE = True
 # traces will be calculated and plotted.
 DISPLAY_AVERAGE = True
 
-# If ALWAYS_LEAK_OP then the leakage decision function will always
-# return True and the leakage will always be added.
-ALWAYS_LEAK_OP = False
-
 # LEAKAGE_BIT is the bit in the round function we look at for
 # doing leakage decision.
 LEAKAGE_BIT = 0
-
-# ROUND_KEY is the 6 bit value used as round key. Note that this
-# means that the round key is repeated instances of ROUND_KEY
-ROUND_KEY = 42
 
 
 #-------------------------------------------------------------------
@@ -378,7 +370,7 @@ def main():
     VERSION = '0.1 alpha'
 
     parser = argparse.ArgumentParser(version = VERSION,
-                                     description = 'Generated traces with side-channel leakage\
+                                     description = 'Generates traces with side-channel leakage\
                                       for testing side-channel analysis tools.')
 
     parser.add_argument("destdir", help = 'The destination file directory')
