@@ -246,10 +246,10 @@ def final_des_round(rbit, rkey, verbose = False):
           4, 17, 30,  9,  1,  7, 23, 13, 31, 26,  2,  8,
          18, 12, 29,  5, 21, 10,  3, 24]
 
-    ip = [57, 49, 41, 33, 25, 17,  9,  1, 59, 51, 43, 35, 27, 19, 11,  3,
-          61, 53, 45, 37, 29, 21, 13,  5, 63, 55, 47, 39, 31, 23, 15,  7,
-          56, 48, 40, 32, 24, 16,  8,  0, 58, 50, 42, 34, 26, 18, 10,  2,
-          60, 52, 44, 36, 28, 20, 12,  4, 62, 54, 46, 38, 30, 22, 14,  6]
+    fp = [39,  7, 47, 15, 55, 23, 63, 31, 38,  6, 46, 14, 54, 22, 62, 30,
+          37,  5, 45, 13, 53, 21, 61, 29, 36,  4, 44, 12, 52, 20, 60, 28,
+          35,  3, 43, 11, 51, 19, 59, 27, 34,  2, 42, 10, 50, 18, 58, 26,
+          33,  1, 41,  9, 49, 17, 57, 25, 32,  0, 40,  8, 48, 16, 56, 24]
 
     # Generate a random round result for round 15.
     l15 = [random.randint(0, 1) for i in range(32)]
@@ -272,7 +272,7 @@ def final_des_round(rbit, rkey, verbose = False):
 
     # We flip the order according to spec to create preoutput and gen ciphertext.
     preoutput = r16 + l16
-    ciphertext = [preoutput[ip[i]] for i in xrange(64)]
+    ciphertext = [preoutput[fp[i]] for i in xrange(64)]
 
     # Determine if the final round caused a leakage or not.
     # That is we have a zero being changed to a one.
@@ -367,7 +367,7 @@ def gen_traces(destdir, basename, num_traces, num_samples, noise_level,
 # Parse arguments and call the real dpa functionality.
 #-------------------------------------------------------------------
 def main():
-    VERSION = '0.1 alpha'
+    VERSION = '0.8 alpha'
 
     parser = argparse.ArgumentParser(version = VERSION,
                                      description = 'Generates traces with side-channel leakage\
